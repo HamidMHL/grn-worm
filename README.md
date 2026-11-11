@@ -19,7 +19,7 @@ programmed; it evolved by mutation and differential reproduction.
 
 - A self-sustaining population of about 80 worms that feed, grow to 4 to 5 cells and lay eggs.
 - A diffusible signal (S1) that limits body size. Knock it out and the worms overgrow and starve.
-- Predator avoidance did **not** evolve, although a close-range flee reflex wins every head-to-head competition when added by hand.
+- Only **weak** predator avoidance evolved. Across 32 replicate worlds under heavy predation, blocking the enemy senses raised the predation share of deaths by about 5 points, 3 worlds stayed self-sustaining, and none came near a close-range flee reflex added by hand, which wins every head-to-head competition. (An earlier version said avoidance did not evolve at all; that rested on one world and was too strong.)
 
 This is one run of a toy model. See the paper's Limitations section.
 
@@ -32,6 +32,7 @@ node evolve.js 450 200000 1        # stage 1 (scored warm-up) + stage 2 (shared 
 node evolve.js 450 200000 1 reuse  # stage 2 only, from founders.json
 node analyze.js                    # sense-blocking and knockout tests
 node exp_enemy.js                  # flee-reflex experiments
+node exp_enemy_seeds.js 32         # evolution under 24 predators in 32 worlds, then enemy-sense test
 python3 -m http.server 8000        # then open http://localhost:8000 for the viewer
 ```
 
