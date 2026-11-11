@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GRN worm world</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1f1e1b; --muted: #6b6a64; --line: #dcdad2;
+    --world: #eef0e6; --act: #1d9e75; --rep: #d85a30; --accent: #534ab7; --gene: #e9e6fb; --prom: #534ab7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1b19; --panel: #262624; --ink: #ecebe5; --muted: #a09f97; --line: #3b3b37; --world: #20241f; --accent: #afa9ec; --gene: #34315a; --prom: #cecbf6; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { display: grid; grid-template-columns: minmax(320px, 640px) minmax(320px, 1fr); gap: 16px; padding: 16px; max-width: 1440px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
+  p.note { color: var(--muted); margin: 0 0 8px; font-size: 13px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  canvas { display: block; max-width: 100%; }
+  #world { width: 100%; aspect-ratio: 1; border-radius: 8px; background: var(--world); cursor: crosshair; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  button, select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--muted); }
+  button.on { background: var(--accent); color: var(--panel); border-color: var(--accent); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .stat { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+  .stat b { display: block; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .stat span { color: var(--muted); font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  .chip { display: inline-block; font-size: 12px; border-radius: 4px; padding: 0 5px; margin: 1px 2px 1px 0; border: 1px solid; white-space: nowrap; }
+  .chip.a { color: var(--act); border-color: var(--act); }
+  .chip.r { color: var(--rep); border-color: var(--rep); }
+  .chip.sense { color: var(--muted); border-color: var(--line); cursor: pointer; }
+  .chip.sense.off { text-decoration: line-through; color: var(--rep); border-color: var(--rep); }
+  #wiring { font-size: 13px; max-height: 300px; overflow: auto; }
+  #wiring div { padding: 2px 0; border-bottom: 1px solid var(--line); }
+  #wiring b { display: inline-block; min-width: 132px; font-weight: 600; }
+  #wiring .unused { color: var(--muted); }
+  #dna { font: 12px/1.5 ui-monospace, Menlo, monospace; word-break: break-all; max-height: 220px; overflow: auto; color: var(--muted); }
+  #dna span { background: var(--gene); color: var(--ink); }
+  #dna span b { color: var(--prom); font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <div class="panel">
+      <h1>GRN worm world</h1>
+      <p class="note">Every worm grows from one egg cell and is run by the gene network written in its DNA. Worms that lay more surviving eggs take over. Click a worm to inspect it.</p>
+      <div class="row">
+        <label>Start from <select id="era"></select></label>
+        <button id="play">Pause</button>
+        <label>Speed <select id="speed"><option value="1">1×</option><option value="3" selected>3×</option><option value="10">10×</option><option value="30">30×</option></select></label>
+        <button id="mut" class="on">Mutation on</button>
+        <button id="smellBtn">Show food smell</button>
+      </div>
+      <canvas id="world" width="1000" height="1000"></canvas>
+      <div class="legend" style="margin-top:8px">
+        <span><i style="background:#e8a020"></i>mouth</span>
+        <span><i style="background:#3fa34d"></i>digest</span>
+        <span><i style="background:#8a5a2b"></i>anus</span>
+        <span><i style="background:#d0486a"></i>muscle</span>
+        <span><i style="background:#9a9a94"></i>inactive</span>
+        <span><i style="background:#4fae3a;width:6px;height:6px"></i>food</span>
+        <span><i style="background:#a8703c;width:5px;height:5px"></i>poop</span>
+        <span><i style="background:#c0392b;border-radius:2px"></i>enemy</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>How this world evolved (before you opened it)</h2>
+      <canvas id="hist" width="600" height="150"></canvas>
+    </div>
+  </section>
+  <section>
+    <div class="panel">
+      <h2>World</h2>
+      <div class="stats" id="wstats"></div>
+    </div>
+    <div class="panel">
+      <h2>Selected worm</h2>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="panel">
+      <h2>Gene products in each cell of the selected worm (head on the left)</h2>
+      <p class="note">Brighter means more. Click a product name to knock it out in every worm.</p>
+      <canvas id="heat" width="580" height="380"></canvas>
+    </div>
+    <div class="panel">
+      <h2>Senses</h2>
+      <p class="note">Click a sense to block it in every worm.</p>
+      <div id="senses"></div>
+    </div>
+    <div class="panel">
+      <h2>Genes of the selected worm</h2>
+      <p class="note">For each gene: what it makes, and what switches it <span class="chip a">on</span> or <span class="chip r">off</span>.</p>
+      <div id="wiring"></div>
+    </div>
+    <div class="panel">
+      <h2>DNA of the selected worm</h2>
+      <p class="note">Highlighted stretches are genes; the bold TATA is where each one starts.</p>
+      <div id="dna"></div>
+    </div>
+  </section>
+</main>
+<script src="sim.js"></script>
+<script src="evolved.js"></script>
+<script>
+(function () {
+  const S = GRNSim, P = S.P, E = window.EVOLVED;
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const wc = $('world'), wx = wc.getContext('2d'), K = wc.width / P.size;
+  const hc = $('heat'), hx = hc.getContext('2d');
+  let world, sel = null, shownId = -1, playing = true, showSmell = false, mutate = true;
+  const knock = new Set(), blind = new Set();
+
+  const eraSel = $('era');
+  const o0 = document.createElement('option'); o0.value = -1; o0.textContent = 'random DNA (tick 0)'; eraSel.appendChild(o0);
+  E.eras.forEach((e, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = 'tick ' + e.t.toLocaleString();
+    eraSel.appendChild(o);
+  });
+  eraSel.value = E.eras.length - 1;
+
+  function applyOpts() {
+    world.knock = knock.size ? [...knock] : null;
+    world.blind = blind.size ? [...blind] : null;
+    world.opts.noMutate = !mutate;
+  }
+  function reset() {
+    const i = +eraSel.value, seed = Math.floor(Math.random() * 1e9);
+    const genomes = i < 0 ? null : E.eras[i].genomes.concat(E.eras[i].genomes);
+    world = S.createWorld(seed, { record: true, genomes });
+    applyOpts(); sel = null; shownId = -1;
+  }
+
+  const COL = [[232, 160, 32], [63, 163, 77], [138, 90, 43], [208, 72, 106]];
+  function cellColor(c) {
+    const e = c.eff, w = [e[0], e[1], e[2], e[3] + e[4]], sum = w[0] + w[1] + w[2] + w[3] || 1, tot = Math.min(1, sum);
+    let r = 154 * (1 - tot), g = 154 * (1 - tot), b = 148 * (1 - tot);
+    for (let i = 0; i < 4; i++) { const f = w[i] / sum * tot; r += COL[i][0] * f; g += COL[i][1] * f; b += COL[i][2] * f; }
+    return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
+  }
+  let smellImg = null;
+  function drawSmell() {
+    const GN = P.grid;
+    if (!smellImg) { smellImg = document.createElement('canvas'); smellImg.width = GN; smellImg.height = GN; }
+    const c = smellImg.getContext('2d'), im = c.createImageData(GN, GN);
+    for (let i = 0; i < GN * GN; i++) {
+      im.data[i * 4] = 80; im.data[i * 4 + 1] = 170; im.data[i * 4 + 2] = 60; im.data[i * 4 + 3] = Math.min(1, world.smell[i] / 2.5) * 150;
+    }
+    c.putImageData(im, 0, 0);
+    wx.drawImage(smellImg, 0, 0, wc.width, wc.height);
+  }
+  function drawWorld() {
+    wx.clearRect(0, 0, wc.width, wc.height);
+    if (showSmell) drawSmell();
+    wx.fillStyle = '#a8703c';
+    for (const p of world.poops) {
+      wx.globalAlpha = Math.max(0.25, 1 - (world.t - p.t) / 1500);
+      wx.beginPath(); wx.arc(p.x * K, p.y * K, 2, 0, 6.3); wx.fill();
+    }
+    wx.globalAlpha = 1; wx.fillStyle = '#4fae3a';
+    for (let f = 0; f < P.maxFood; f++) if (world.falive[f]) { wx.beginPath(); wx.arc(world.fx[f] * K, world.fy[f] * K, 3, 0, 6.3); wx.fill(); }
+    for (const p of world.preds) {
+      wx.save(); wx.translate(p.x * K, p.y * K); wx.rotate(p.th);
+      wx.fillStyle = p.sat > 0 ? '#c0392b66' : '#c0392b';
+      wx.beginPath(); wx.moveTo(13, 0); wx.lineTo(-9, 9); wx.lineTo(-9, -9); wx.closePath(); wx.fill();
+      wx.restore();
+      if (p.chasing) { wx.strokeStyle = '#c0392b88'; wx.lineWidth = 1.5; wx.beginPath(); wx.arc(p.x * K, p.y * K, 22, 0, 6.3); wx.stroke(); }
+    }
+    for (const worm of world.worms) {
+      const cells = worm.cells;
+      for (let k = cells.length - 1; k >= 0; k--) {
+        const c = cells[k], x = S.wrap(c.x) * K, y = S.wrap(c.y) * K;
+        wx.fillStyle = cellColor(c);
+        wx.beginPath(); wx.arc(x, y, 3 * K, 0, 6.3); wx.fill();
+        wx.lineWidth = 1; wx.strokeStyle = '#00000066'; wx.stroke();
+        if (k === 0) {
+          wx.fillStyle = '#111';
+          for (const s of [1, -1]) { wx.beginPath(); wx.arc(x + (c.dx * 1.5 - c.dy * 1.4 * s) * K, y + (c.dy * 1.5 + c.dx * 1.4 * s) * K, 1.4, 0, 6.3); wx.fill(); }
+        }
+      }
+    }
+    if (sel && sel.alive) {
+      const h = sel.cells[0];
+      wx.strokeStyle = css('--accent'); wx.lineWidth = 2.5;
+      wx.beginPath(); wx.arc(S.wrap(h.x) * K, S.wrap(h.y) * K, 16, 0, 6.3); wx.stroke();
+    }
+  }
+  wc.addEventListener('click', (ev) => {
+    const b = wc.getBoundingClientRect(), x = (ev.clientX - b.left) / b.width * P.size, y = (ev.clientY - b.top) / b.height * P.size;
+    let best = null, bd = 900;
+    for (const w of world.worms) for (const c of w.cells) {
+      const dx = S.wdiff(S.wrap(c.x) - x), dy = S.wdiff(S.wrap(c.y) - y), d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = w; }
+    }
+    if (best) sel = best;
+  });
+  function autoSelect() {
+    if (sel && sel.alive) return;
+    sel = null;
+    for (const w of world.worms) if (!sel || w.cells.length > sel.cells.length) sel = w;
+  }
+
+  const ROWS = S.PROD_NAMES.concat(['S1 level', 'S2 level', 'S3 level', 'maternal', 'gut food', 'gut waste']);
+  const RH = 14, LW = 80, CW = 20;
+  hc.height = ROWS.length * RH + 4;
+  function drawHeat() {
+    const ink = css('--ink'), muted = css('--muted'), rep = css('--rep'), NP = S.NPROD;
+    hx.clearRect(0, 0, hc.width, hc.height);
+    hx.font = '12px -apple-system, sans-serif'; hx.textBaseline = 'middle';
+    const cells = sel ? sel.cells : [];
+    for (let r = 0; r < ROWS.length; r++) {
+      const y = r * RH + 2, ko = r < NP && knock.has(r);
+      hx.fillStyle = ko ? rep : (r >= NP ? muted : ink);
+      hx.fillText((ko ? '✕ ' : '') + ROWS[r], 2, y + RH / 2);
+      for (let k = 0; k < cells.length; k++) {
+        const c = cells[k]; let v, hue;
+        if (r < NP) { v = c.pl[r]; hue = r < S.N_TF ? 250 : r < S.P_EFF ? 190 : 30; }
+        else if (r < NP + 3) { v = Math.min(1, c.c[r - NP]); hue = 190; }
+        else if (r === NP + 3) { v = c.m; hue = 300; }
+        else { v = (r === NP + 4 ? c.food : c.waste) / P.gutCap; hue = r === NP + 4 ? 110 : 25; }
+        hx.fillStyle = 'hsla(' + hue + ',70%,50%,' + (0.06 + 0.94 * v) + ')';
+        hx.fillRect(LW + k * CW, y, CW - 2, RH - 2);
+      }
+    }
+  }
+  hc.addEventListener('click', (ev) => {
+    const b = hc.getBoundingClientRect(), r = Math.floor((ev.clientY - b.top) * (hc.height / b.height) / RH);
+    if (r >= 0 && r < S.NPROD) { knock.has(r) ? knock.delete(r) : knock.add(r); applyOpts(); }
+  });
+
+  function drawSenses() {
+    const el = $('senses'); el.innerHTML = '';
+    S.INPUTS.forEach((name, i) => {
+      const s = document.createElement('span');
+      s.className = 'chip sense' + (blind.has(i) ? ' off' : ''); s.textContent = name;
+      s.onclick = () => { blind.has(i) ? blind.delete(i) : blind.add(i); applyOpts(); drawSenses(); };
+      el.appendChild(s);
+    });
+  }
+
+  function drawGenome() {
+    const el = $('wiring'); el.innerHTML = '';
+    const d = $('dna'); d.innerHTML = '';
+    if (!sel) return;
+    sel.genes.forEach((g, i) => {
+      const row = document.createElement('div'), b = document.createElement('b');
+      b.textContent = 'gene ' + (i + 1) + ' → ' + S.PROD_NAMES[g.prod]; row.appendChild(b);
+      const base = document.createElement('span'); base.className = 'unused';
+      base.textContent = 'default ' + (g.bias > 0 ? 'on' : 'off') + ' '; row.appendChild(base);
+      g.sites.slice().sort((a, b2) => Math.abs(b2[1]) - Math.abs(a[1])).forEach(([r, v]) => {
+        const c = document.createElement('span'); c.className = 'chip ' + (v > 0 ? 'a' : 'r');
+        c.textContent = S.REG_NAMES[r] + ' ' + (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1); row.appendChild(c);
+      });
+      el.appendChild(row);
+    });
+    let pos = 0; const dna = sel.dna;
+    for (const g of sel.genes) {
+      d.appendChild(document.createTextNode(dna.slice(pos, g.start)));
+      const s = document.createElement('span'), b = document.createElement('b');
+      b.textContent = 'TATA'; s.appendChild(b); s.appendChild(document.createTextNode(dna.slice(g.start + 4, g.end)));
+      s.title = 'makes ' + S.PROD_NAMES[g.prod];
+      d.appendChild(s); pos = g.end;
+    }
+    d.appendChild(document.createTextNode(dna.slice(pos)));
+  }
+
+  function drawHist() {
+    const c = $('hist'), x = c.getContext('2d'), h = E.history, W = c.width, H = c.height;
+    x.clearRect(0, 0, W, H); x.font = '12px -apple-system, sans-serif';
+    const series = [['cells', 'cells per worm', css('--accent')], ['pop', 'population', '#3fa34d'], ['eggsPerLife', 'eggs per life', '#e8a020']];
+    series.forEach(([key, label, col], si) => {
+      const max = Math.max(...h.map((r) => r[key])) || 1;
+      x.strokeStyle = col; x.lineWidth = 1.5; x.beginPath();
+      h.forEach((r, i) => { const px = 4 + i / (h.length - 1 || 1) * (W - 8), py = H - 18 - r[key] / max * (H - 44); i ? x.lineTo(px, py) : x.moveTo(px, py); });
+      x.stroke(); x.fillStyle = col;
+      x.fillText(label + ' (max ' + max + ')', 4 + si * 190, 12);
+    });
+    x.fillStyle = css('--muted'); x.fillText('tick 0', 4, H - 3); x.textAlign = 'right';
+    x.fillText('tick ' + h[h.length - 1].t.toLocaleString(), W - 4, H - 3); x.textAlign = 'left';
+  }
+
+  const box = (items) => items.map(([v, l]) => '<div class="stat"><b>' + v + '</b><span>' + l + '</span></div>').join('');
+  function drawStats() {
+    const s = S.summary(world), st = world.stats;
+    $('wstats').innerHTML = box([[world.t.toLocaleString(), 'tick'], [s.pop, 'worms'], [s.cells.toFixed(1), 'cells per worm'], [s.genes.toFixed(1), 'genes per worm'],
+      [st.births, 'eggs hatched'], [st.injected, 'eggs added from outside'], [st.eaten, 'killed by enemies'], [st.starved, 'starved']]);
+    if (!sel) { $('stats').innerHTML = ''; return; }
+    $('stats').innerHTML = box([[sel.age, 'age (ticks)'], [sel.cells.length, 'cells'], [sel.energy.toFixed(1), 'energy'], [sel.eggs, 'eggs laid'],
+      [sel.eaten, 'pellets eaten'], [sel.bites, 'times bitten'], [sel.net.n, 'genes'], [sel.dna.length, 'DNA letters']]);
+  }
+
+  function frame() {
+    if (playing) { const n = +$('speed').value; for (let i = 0; i < n; i++) S.step(world); }
+    autoSelect();
+    if (sel && sel.id !== shownId) { shownId = sel.id; drawGenome(); }
+    drawWorld(); drawHeat(); drawStats();
+    requestAnimationFrame(frame);
+  }
+
+  $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? 'Pause' : 'Play'; };
+  $('mut').onclick = () => { mutate = !mutate; $('mut').classList.toggle('on', mutate); $('mut').textContent = mutate ? 'Mutation on' : 'Mutation off'; applyOpts(); };
+  $('smellBtn').onclick = () => { showSmell = !showSmell; $('smellBtn').classList.toggle('on', showSmell); };
+  eraSel.onchange = reset;
+
+  reset(); drawSenses(); drawHist(); frame();
+  window.__grn = { get world() { return world; }, get sel() { return sel; } };
+})();
+</script>
+</body>
+</html>
