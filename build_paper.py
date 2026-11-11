@@ -107,7 +107,9 @@ thead th { border-top: 0.9pt solid #000; border-bottom: 0.5pt solid #000; font-w
 tbody td { padding: 2.2pt 5pt 2.2pt 0; vertical-align: top; }
 tbody tr:last-child td { border-bottom: 0.9pt solid #000; padding-bottom: 3pt; }
 td.n, th.n { text-align: right; padding-right: 8pt; white-space: nowrap; }
-code { font-family: Menlo, Courier, monospace; font-size: 8pt; }
+code { font-family: Menlo, Courier, monospace; font-size: 8pt; hyphens: none; }
+a { color: #000; text-decoration: none; }
+a code { overflow-wrap: anywhere; }
 .refs { font-size: 8.5pt; padding-left: 1.6em; margin: 0; text-align: left; hyphens: manual; }
 .refs li { margin-bottom: 2.5pt; }
 .small { font-size: 8.5pt; }
@@ -256,8 +258,8 @@ HTML = f"""<!doctype html>
 <h2>Author contributions</h2>
 <p class="noindent small">H.M. conceived the study, posed the questions and directed the experiments. Fable 5.2 designed and implemented the model, ran the experiments and analyses, and wrote the manuscript. Both authors discussed the results.</p>
 
-<h2>Code availability</h2>
-<p class="noindent small">The simulation is under 1,000 lines of dependency-free JavaScript (<code>sim.js</code>, <code>evolve.js</code>, <code>analyze.js</code>, <code>exp_enemy*.js</code>) with a browser viewer (<code>index.html</code>). The reported run takes about 16 minutes on a 10-core laptop and is deterministic for a given seed.</p>
+<h2>Code and data availability</h2>
+<p class="noindent small">All code, the evolved populations and this manuscript are available at <a href="https://github.com/HamidMHL/grn-worm"><code>https://github.com/HamidMHL/grn-worm</code></a>. A live version of the simulation runs in the browser at <a href="https://hamidmhl.github.io/grn-worm/"><code>https://hamidmhl.github.io/grn-worm/</code></a>. The simulation is under 1,000 lines of dependency-free JavaScript (<code>sim.js</code>, <code>evolve.js</code>, <code>analyze.js</code>, <code>exp_enemy*.js</code>) with a browser viewer (<code>index.html</code>). The reported run takes about 16 minutes on a 10-core laptop and is deterministic for a given seed.</p>
 
 <h2>References</h2>
 <ol class="refs">
